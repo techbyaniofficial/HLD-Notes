@@ -1,0 +1,57 @@
+Event-Driven Architecture (EDA)
+Event-Driven Architecture is an architecture where different components/services communicate by producing and reacting to events.
+Something happens → an event is generated → interested services react to that event.
+
+An event simply represents something that has already happened, such as:
+OrderPlaced
+PaymentCompleted
+UserRegistered
+ProductShipped
+
+Simple example
+Suppose a user places an order:
+                 OrderPlaced Event
+Order Service ─────────┬───────────────
+                       │
+              Message Broker
+                 /      |       \
+                ↓       ↓        ↓
+          Inventory   Email    Analytics
+           Service   Service    Service
+
+The Order Service publishes:
+OrderPlaced
+{
+   orderId: 123,
+   userId: 456
+}
+
+Then different services independently react:
+Inventory Service → Reduce stock
+Email Service     → Send confirmation
+Analytics Service → Record order
+
+The Order Service doesn't need to directly call every service.
+Traditional vs Event-Driven
+Synchronous/direct communication:
+Order Service
+    ├──→ Inventory Service
+    ├──→ Email Service
+    └──→ Analytics Service
+
+Order Service is more directly coupled to these interactions.
+Event-driven:
+Order Service
+      ↓
+ "OrderPlaced"
+      ↓
+ Message Broker
+   ↙    ↓    ↘
+Inventory Email Analytics
+
+Services can be more loosely coupled.
+Main components
+Producer → generates/publishes an event.
+Event Broker / Message Broker → transports/stores/routes events depending on the technology.
+Consumer → receives an event and performs some action.
+Producer → Broker → Consumer(s)

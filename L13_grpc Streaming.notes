@@ -1,0 +1,54 @@
+
+!Streaming!
+    - means the server continuously/progressively sends data to the client over a stream instead of requiring the client to request each next page.
+
+Example
+
+Normal pagination:
+
+Client → Give me 100 records
+Server → Records 1–100
+
+Client → Give me next 100
+Server → Records 101–200
+
+Client → Give me next 100
+Server → Records 201–300
+
+The client repeatedly asks for the next page.
+
+Streaming:
+
+Client → Start stream
+
+Server → Record 1
+       → Record 2
+       → Record 3
+       → Record 4
+       → ...
+
+The server progressively sends records through the stream.
+
+Common with gRPC
+
+gRPC supports server streaming, for example:
+
+Client ── GetMessages() ──→ Server
+
+Client ←── Message 1 ────── Server
+Client ←── Message 2 ────── Server
+Client ←── Message 3 ────── Server
+Client ←── Message 4 ────── Server
+              ...
+Pagination vs Streaming
+Pagination	Streaming
+Data fetched in pages	Data sent progressively
+Client requests next page	Server continues sending
+Uses limit/offset/cursor	Uses a stream
+Good for search/product lists	Good for real-time or continuous data
+
+Interview definition:
+
+Streaming is a data-delivery approach where the server progressively sends data to the client over a stream rather than requiring repeated requests for separate pages.
+
+One important point: Infinite scrolling is not necessarily streaming. Instagram-like infinite scroll often uses cursor pagination behind the scenes.

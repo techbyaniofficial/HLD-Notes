@@ -1,0 +1,140 @@
+-Pagination means dividing a large amount of data into smaller chunks/pages and returning them one 
+at a time instead of returning everything in a single API response.
+
+One-line definitions:
+
+Offset pagination: Retrieve records by specifying how many records to skip.
+
+Cursor pagination: Retrieve the next set of records starting after a specific position/record.
+
+For HLD, cursor pagination is especially important for things like Instagram/Twitter feeds, chat messages, and other large continuously changing datasets.
+
+
+For example, suppose Amazon has 1,000,000 products. We don't want:
+
+GET /products
+→ return all 1,000,000 products ❌
+.
+Instead:
+
+Page 1 → 20 products
+Page 2 → next 20 products
+Page 3 → next 20 products
+
+This reduces response size, database load, network usage, and latency.
+
+There are two important pagination approaches for HLD:
+
+1. Offset-based pagination:
+
+We specify how many records to skip and how many to return.
+
+GET /products?limit=20&offset=0
+
+First page:
+
+offset = 0
+limit  = 20
+
+→ records 1-20
+
+Second page:
+
+offset = 20
+limit  = 20
+
+→ records 21-40
+
+Third:
+
+offset = 40
+limit  = 20
+
+→ records 41-60
+
+You may also see this represented as:
+
+GET /products?page=3&size=20
+
+Internally, the server can calculate:
+
+offset = (page - 1) × size
+
+Advantage: Very simple and allows jumping directly to a specific page.
+
+Problem: Large offsets can become inefficient, and if records are inserted/deleted while you're moving through pages, you can sometimes skip records or see duplicates.
+
+
+
+
+2. Cursor-based pagination:
+Instead of saying "skip 20 records", we tell the server:
+
+Give me records after this particular position/record.
+
+Suppose products are ordered by ID:
+
+101
+102
+103
+104
+105
+...
+
+First request:
+
+GET /products?limit=3
+
+Response:
+
+101
+102
+103
+
+nextCursor = 103
+
+Then:
+
+GET /products?limit=3&cursor=103
+
+Server returns:
+
+104
+105
+106
+
+nextCursor = 106
+
+So conceptually:
+
+Page 1
+101  102  103
+          ↑
+       cursor
+
+             ↓
+
+Page 2
+104  105  106
+          ↑
+       cursor
+
+Cursor pagination is generally more efficient for very large/changing datasets and is less prone to duplicates/skipped results caused by inserts/deletes before your current position.
+
+However, it's not naturally suited for:
+
+"Take me directly to page 500"
+
+because you're usually moving relative to a cursor rather than calculating an arbitrary offset.
+
+For your HLD interviews, remember this
+|                          | Offset                        | Cursor                                 |
+| ------------------------ | ----------------------------- | -------------------------------------- |
+| Uses                     | `offset + limit`              | Cursor + limit                         |
+| Simple                   | ✅                             | Slightly complex                       |
+| Jump to page 100         | ✅                             | ❌ Usually                              |
+| Large datasets           | Can become slow               | Better                                 |
+| Frequently changing data | Can cause duplicates/skips    | More stable                            |
+| Common use               | Admin pages, smaller datasets | Feeds, infinite scroll, large datasets |
+
+

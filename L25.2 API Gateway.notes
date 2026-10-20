@@ -1,0 +1,130 @@
+An API Gateway is a single entry point for client requests that routes them to the appropriate backend service.
+It is especially common in microservices architecture.
+Suppose you have:
+User Service
+Order Service
+Payment Service
+Product Service
+
+Without an API Gateway, the client may need to communicate directly with different services:
+                 ┌──→ User Service
+Client ──────────┼──→ Order Service
+                 ├──→ Payment Service
+                 └──→ Product Service
+
+With an API Gateway:
+                       ┌──→ User Service
+                       │
+Client → API Gateway ──┼──→ Order Service
+                       │
+                       ├──→ Payment Service
+                       │
+                       └──→ Product Service
+
+The client only needs to know about the API Gateway.
+Example
+Client sends:
+GET /users/101
+
+API Gateway routes it to:
+User Service
+
+Another request:
+POST /orders
+
+goes to:
+Order Service
+
+So:
+/users/*     → User Service
+/orders/*    → Order Service
+/payments/*  → Payment Service
+/products/*  → Product Service
+
+This is called request routing.
+But API Gateway does more than routing
+It can handle common concerns before requests reach individual services:
+                    Client
+                       │
+                       ▼
+              ┌────────────────┐
+              │  API Gateway   │
+              │                │
+              │ Authentication │
+              │ Rate Limiting  │
+              │ Routing        │
+              │ Logging        │
+              │ SSL/TLS        │
+              │ API Versioning │
+              └────────────────┘
+                       │
+             ┌─────────┼─────────┐
+             ▼         ▼         ▼
+           User      Order     Payment
+          Service   Service    Service
+
+Important responsibilities include:
+- Request routing
+- Authentication / authorization enforcement
+- Rate limiting
+- Logging and monitoring
+- TLS termination
+- Request/response transformation
+- API versioning
+- Sometimes response aggregation
+Why is it useful?
+Imagine you have 50 microservices.
+Without a gateway:
+Client needs knowledge of:
+
+user-service...
+order-service...
+payment-service...
+inventory-service...
+notification-service...
+...
+
+That's messy and exposes backend service structure.
+Instead:
+Client
+   ↓
+api.example.com
+   ↓
+API Gateway
+   ↓
+50 internal services
+
+The gateway hides much of the internal architecture from the client.
+API Gateway vs Load Balancer
+This is a common confusion.
+A Load Balancer primarily distributes traffic among multiple instances of a service:
+                Load Balancer
+                /     |     \
+               ↓      ↓      ↓
+           Server1 Server2 Server3
+
+An API Gateway primarily manages and routes API requests to different backend services:
+                    API Gateway
+                  /      |       \
+                 ↓       ↓        ↓
+              User     Order    Payment
+             Service  Service   Service
+
+They can exist together:
+Client
+   ↓
+API Gateway
+   ↓
+Load Balancer
+   ↓
+┌──────┬──────┬──────┐
+▼      ▼      ▼
+S1     S2     S3
+
+In real systems, their features can overlap, so don't memorize that they are always separate physical components.
+Interview definition
+An API Gateway is a single entry point between clients and backend services that routes API requests and can handle cross-cutting concerns such as authentication, rate limiting, logging, and request transformation.
+
+Easy memory:
+Load Balancer → “Which instance should handle this traffic?”
+API Gateway → “Which service/API should this request go to, and what API-level policies should be applied?”

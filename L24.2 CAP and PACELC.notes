@@ -1,0 +1,171 @@
+1. CAP Theorem
+CAP theorem applies to distributed data systems.
+When a network partition occurs, a distributed system cannot simultaneously guarantee both Consistency and Availability. It must choose between C and A while tolerating the partition.
+
+CAP stands for:
+C — Consistency
+Every read gets the latest successful write (or an error), regardless of which node handles the request.
+Write: balance = ₹500
+
+Node A → ₹500
+Node B → ₹500
+Node C → ₹500
+
+Clients don't receive stale data.
+A — Availability
+Every request to a non-failing node receives a response, even if that response may not contain the latest data.
+
+For example, even during some failures:
+Request
+   ↓
+Node
+   ↓
+Response ✅
+
+Availability doesn't mean the response must contain the latest value—that's where consistency can conflict with it.
+P — Partition Tolerance
+As we discussed:
+The system continues operating despite communication/network failure between nodes.
+
+Node A  ←─── ❌ network ───→ Node B
+
+Node A ✅                  Node B ✅
+
+Both nodes may be healthy, but they can't communicate.
+Where does the trade-off happen?
+This is the most important part of CAP.
+Imagine two replicas:
+          balance = ₹1000
+
+Node A  ←──────────────→ Node B
+
+Now network communication breaks:
+Node A       ❌       Node B
+
+A request updates Node A:
+Node A
+balance = ₹500
+
+Node B
+balance = ₹1000
+
+Because of the partition, A cannot send the new value to B.
+Now someone asks Node B:
+GET balance
+
+The system has two choices.
+CP — Choose Consistency
+Node B says:
+"I can't guarantee that my data is current,
+so I won't serve this read."
+
+You preserve:
+Consistency + Partition Tolerance
+but sacrifice some Availability.
+Partition occurs
+      ↓
+Can't guarantee latest data
+      ↓
+Reject/block some requests
+
+AP — Choose Availability
+Node B says:
+"I'll still respond."
+
+It might return:
+₹1000
+
+even though Node A has:
+₹500
+
+You preserve:
+Availability + Partition Tolerance
+but may temporarily sacrifice strong consistency.
+Eventually, when communication is restored, replicas can synchronize.
+This is associated with eventual consistency.
+What about CA?
+You will often see:
+CA
+CP
+AP
+
+But don't interpret CAP as:
+"Just choose any two of three." ❌
+
+In a distributed system where network partitions can happen, you generally need to tolerate P.
+So the meaningful decision during a partition is:
+             Partition occurs
+                    ↓
+              ┌─────┴─────┐
+              ↓           ↓
+             CP           AP
+
+         Consistency   Availability
+              +           +
+         Partition     Partition
+
+That's the proper mental model for CAP.
+2. PACELC Theorem
+CAP mainly tells us what happens when there is a network partition.
+But what about when everything is working normally?
+That's what PACELC extends.
+PACELC:
+If there is a Partition (P), choose between Availability (A) and Consistency (C); Else (E), choose between Latency (L) and Consistency (C).
+
+Break the name:
+PAC  ELC
+
+P → A or C
+
+ELSE
+
+L or C
+
+Very easy way to remember:
+         Network Partition?
+             /       \
+           YES        NO
+            ↓          ↓
+          A vs C      L vs C
+
+Why latency vs consistency?
+Suppose there is no network failure and you have replicas:
+Node A ←────→ Node B ←────→ Node C
+
+You perform a write.
+For very strong consistency, the system may need coordination/acknowledgement among replicas before completing the operation.
+Write
+ ↓
+Node A
+ ↓
+Node B
+ ↓
+Node C
+ ↓
+Confirm
+ ↓
+Response
+
+This coordination can increase latency.
+Alternatively, the system may respond sooner:
+Write → Node A → Response
+          ↓
+      Replicate later
+
+Lower latency, but another replica may temporarily contain older data.
+So even without a partition, distributed systems can face:
+Consistency vs Latency trade-offs.
+
+CAP vs PACELC
+CAP	PACELC
+Focuses on network partitions	Extends CAP
+During partition: C vs A	During partition: A vs C
+Doesn't explicitly describe normal-operation trade-off	Without partition: L vs C
+
+
+Interview-ready definitions
+CAP:
+CAP theorem states that when a network partition occurs, a distributed system must trade off between strong consistency and availability.
+
+PACELC:
+PACELC extends CAP by stating that during a partition there is an Availability-vs-Consistency trade-off, and otherwise there can be a Latency-vs-Consistency trade-off.

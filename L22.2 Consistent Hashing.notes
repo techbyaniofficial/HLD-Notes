@@ -1,0 +1,142 @@
+Consistent Hashing
+Consistent hashing is a technique used in distributed systems to distribute data across multiple servers/nodes in a way that minimizes data movement when servers are added or removed.
+This is important in HLD, especially for distributed caches, databases, and sharding.
+First understand the problem
+Suppose we have 3 servers:
+Server 0
+Server 1
+Server 2
+
+A simple way to distribute data is:
+server = hash(key) % number_of_servers
+
+For example:
+hash("user101") % 3 → Server 1
+hash("user102") % 3 → Server 0
+hash("user103") % 3 → Server 2
+
+Everything works fine.
+But now we add a new server.
+3 servers → 4 servers
+
+Our formula changes:
+Before:
+hash(key) % 3
+
+After:
+hash(key) % 4
+
+Now a large portion of keys may map to different servers.
+Before                     After
+
+User A → Server 1          User A → Server 3 ❌
+User B → Server 2          User B → Server 0 ❌
+User C → Server 0          User C → Server 2 ❌
+User D → Server 1          User D → Server 1 ✅
+
+That means a lot of data may need to be redistributed.
+At large scale, that's expensive.
+How consistent hashing solves this
+Consistent hashing imagines the hash space as a ring.
+                  0
+                  │
+           S1     │      S2
+             \    │    /
+              \   │   /
+               \  │  /
+        ──────────○──────────
+              /       \
+             /         \
+           S4           S3
+
+Both servers and keys are hashed onto this ring.
+For example:
+                  S1
+              K1    K2
+
+        S4                S2
+
+              K4    K3
+                  S3
+
+For each key, we move clockwise around the ring and assign it to the first server we encounter.
+For example:
+K1 → S1
+K2 → S2
+K3 → S3
+K4 → S4
+
+What happens when we add a server?
+Suppose we add S5 between S1 and S2:
+S1 ───── S5 ───── S2
+
+Only the keys whose mapping now falls onto S5 need to move.
+Before:
+
+K1 → S1
+K2 → S2
+K3 → S3
+K4 → S4
+
+
+After adding S5:
+
+K1 → S1
+K2 → S5    ← changed
+K3 → S3
+K4 → S4
+
+Most other keys remain where they were.
+That's the main advantage.
+If a server goes down
+Same idea.
+Suppose:
+K1 → S1
+K2 → S2
+K3 → S3
+
+S2 goes down:
+K2 → S2 ❌
+
+K2 can be reassigned to the next server clockwise, say S3.
+Other unrelated keys don't all need to be remapped.
+Normal hashing vs consistent hashing
+Normal modulo hashing	Consistent hashing
+hash(key) % N	Hash ring
+Simple	More complex
+Adding/removing node changes many mappings	Changes relatively few mappings
+More data redistribution	Less data redistribution
+Poorer for frequently changing distributed clusters	Useful for distributed systems
+
+
+Where is it used?
+Conceptually useful in:
+Distributed caching
+        ↓
+Redis/Memcached-style clusters
+
+Database sharding
+        ↓
+Distributed databases
+
+Distributed storage
+        ↓
+Data spread across nodes
+
+One additional concept you'll encounter is virtual nodes (vnodes), which help distribute data/load more evenly around the ring.
+Interview definition
+Consistent hashing is a hashing technique used to distribute data across nodes such that adding or removing a node requires remapping only a relatively small portion of the keys instead of redistributing most of the data.
+
+The key thing to remember is:
+Normal hashing:
+Server count changes
+       ↓
+Many keys move ❌
+
+
+Consistent hashing:
+Server count changes
+       ↓
+Only a portion of keys move ✅
+
+For your current HLD level, this + virtual nodes concept is enough; you don't need to learn the implementation algorithm yet.

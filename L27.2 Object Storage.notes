@@ -1,0 +1,130 @@
+Object storage is a storage system designed to store large amounts of unstructured data as objects, such as:
+- Images
+- Videos
+- Audio
+- PDFs/documents
+- Backups
+- Log/archive files
+Instead of storing data as database rows or traditional filesystem blocks, object storage stores each item as an object containing the data, metadata, and an identifier/key.
+
+Simple example
+Suppose you're designing Instagram.
+Users upload millions of photos and videos.
+You generally wouldn't store all those large media files directly inside your relational database.
+Instead:
+User uploads photo
+       ↓
+Application Server
+       ↓
+ Object Storage
+       ↓
+   Photo stored
+
+The database can store metadata/reference information:
+Post Database
+
+post_id:     123
+user_id:     101
+caption:     "Vacation!"
+image_key:   "posts/101/photo123.jpg"
+
+While the actual image is stored in object storage:
+Object Storage
+
+posts/101/photo123.jpg
+        ↓
+Actual image bytes
+
+Amazon S3
+Amazon S3 stands for Amazon Simple Storage Service.
+It is AWS's object storage service.
+In S3, objects are stored inside buckets.
+Conceptually:
+Amazon S3
+
+Bucket: instagram-media
+│
+├── images/
+│     ├── image101.jpg
+│     ├── image102.jpg
+│     └── image103.jpg
+│
+├── videos/
+│     ├── video201.mp4
+│     └── video202.mp4
+│
+└── documents/
+      └── file301.pdf
+
+Technically, S3 uses object keys such as images/image101.jpg; the / characters make the keys look folder-like.
+An S3 object contains
+Conceptually:
+Object
+├── Data
+│     └── image.jpg
+│
+├── Key
+│     └── images/image101.jpg
+│
+└── Metadata
+      ├── Content-Type: image/jpeg
+      └── other metadata
+
+Why use object storage?
+Object storage such as S3 is designed for:
+Massive scalability — can hold huge numbers of objects.
+Durability — designed to keep stored data reliably.
+Large files — good for images, videos, backups, documents, etc.
+Metadata — objects can have associated metadata.
+Cost efficiency — often more economical than keeping large media blobs in your primary application database.
+HLD example: YouTube
+Imagine designing YouTube:
+User
+ │
+ │ Upload video
+ ▼
+API Server
+ │
+ ├──────────────→ Database
+ │                 │
+ │                 └─ title
+ │                    userId
+ │                    videoId
+ │                    object key
+ │
+ └──────────────→ Object Storage (S3)
+                    │
+                    └─ actual video
+
+Then for delivering videos globally:
+S3 / Object Storage
+        ↓
+       CDN
+        ↓
+      Users
+
+This Object Storage + CDN combination is extremely common in system-design discussions.
+Object Storage vs Database
+Database	Object Storage
+Structured/queryable application data	Large unstructured objects
+Users, orders, payments	Images, videos, PDFs
+Complex queries/indexes	Access primarily by object key
+Frequent record updates	Often whole-object-oriented access
+PostgreSQL, MySQL, MongoDB	Amazon S3, Google Cloud Storage, Azure Blob Storage
+
+
+So don't think:
+S3 replaces your database. ❌
+
+They usually work together.
+Database
+→ "What is this video and who owns it?"
+
+Object Storage
+→ "Give me the actual video file."
+
+Interview definition
+Object storage stores unstructured data such as images, videos, and documents as objects identified by unique keys and associated metadata. Amazon S3 is a widely used object-storage service.
+
+For HLD, the key connection to remember is:
+Large static/media files → Object Storage → CDN → Users.

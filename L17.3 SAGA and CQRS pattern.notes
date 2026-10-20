@@ -1,0 +1,134 @@
+
+!1. Saga Pattern
+Saga Pattern is used to manage a business transaction that spans multiple microservices, where a normal single-database ACID transaction cannot cover everything.
+Saga = break one distributed business transaction into multiple local transactions, with compensating actions if something fails.
+
+Example: E-commerce order
+Suppose placing an order requires:
+Create Order
+    ↓
+Reserve Inventory
+    ↓
+Process Payment
+    ↓
+Arrange Shipping
+
+Each operation belongs to a different service/database:
+Order Service      → Order DB
+Inventory Service  → Inventory DB
+Payment Service    → Payment DB
+Shipping Service   → Shipping DB
+
+You can't simply do:
+BEGIN TRANSACTION
+
+update Order DB
+update Inventory DB
+update Payment DB
+
+COMMIT
+
+because these are independent services/databases.
+Saga handles it as a sequence:
+Create Order       ✅
+      ↓
+Reserve Inventory  ✅
+      ↓
+Process Payment    ❌
+
+Payment failed.
+
+Now we need compensating transactions:
+Payment failed
+      ↓
+Release Inventory
+      ↓
+Cancel Order
+
+Notice this is not necessarily a database ROLLBACK. We perform new business operations that compensate for previous successful operations.
+
+#Two types of Saga
+
+1. Choreography
+
+Services react to events.
+OrderCreated
+     ↓
+Inventory Service
+     ↓
+InventoryReserved
+     ↓
+Payment Service
+     ↓
+PaymentFailed
+     ↓
+Inventory Service → Release inventory
+
+No central controller.
+
+2. Orchestration
+A central Saga Orchestrator tells services what to do.
+             Saga Orchestrator
+              /      |      \
+             ↓       ↓       ↓
+          Order  Inventory Payment
+
+For interviews, know both names and the basic difference.
+
+
+
+!2. CQRS Pattern
+CQRS = Command Query Responsibility Segregation.
+Sounds complicated, but the core idea is simple:
+Separate the operations that modify data (writes) from the operations that read data.
+
+Normally:
+              Application
+                   ↓
+              Same Model
+              /        \
+           Reads       Writes
+
+With CQRS:
+              Application
+               /       \
+              ↓         ↓
+          Commands    Queries
+           WRITE       READ
+              ↓         ↓
+         Write Model  Read Model
+
+Command
+Changes the state:
+CreateOrder
+UpdateUser
+CancelOrder
+
+Think:
+Command = WRITE
+
+Query
+Reads data without changing it:
+GetOrder
+GetUser
+GetProducts
+
+Think:
+Query = READ
+
+Why use CQRS?
+Imagine an application where:
+Reads  → 1,000,000/sec
+Writes →    10,000/sec
+
+Read and write requirements are very different.
+CQRS allows us to optimize them separately:
+                 Application
+                  /        \
+                 ↓          ↓
+             Write Side   Read Side
+                 ↓          ↓
+              SQL DB     Optimized Read DB
+
+For example, the write model may focus on correct transactions, while the read model may be denormalized/cached for very fast queries.
+But this introduces extra complexity, and the read side may be eventually consistent with the write side.

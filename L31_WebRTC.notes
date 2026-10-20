@@ -1,0 +1,432 @@
+1. What is WebRTC?
+WebRTC = Web Real-Time Communication.
+WebRTC is a set of technologies/APIs and protocols that enables real-time audio, video, and data communication between clients.
+
+It is commonly used for:
+Video calls
+Audio calls
+Screen sharing
+Peer-to-peer data
+
+WebRTC handles important things such as media capture, encoding/decoding, encryption, network traversal, and real-time media transport.
+2. Simple 1-to-1 Video Call
+Suppose:
+User A 📱  ←────────→  💻 User B
+
+Ideally, we want media to travel directly:
+User A
+   │
+   │ Audio + Video
+   │
+   ▼
+User B
+
+User A
+   ▲
+   │ Audio + Video
+   │
+User B
+
+This is Peer-to-Peer (P2P) communication.
+After the connection is established, the media path can be:
+        WebRTC
+User A ═════════ User B
+        P2P
+
+So your video doesn't necessarily need to travel through an application server.
+But establishing that connection is where things get interesting.
+3. How do the two users connect?
+Suppose A wants to call B.
+They first need to exchange connection information.
+For this, we use a signaling server.
+User A
+   │
+   │
+   ▼
+Signaling Server
+   │
+   │
+   ▼
+User B
+
+The signaling server helps exchange information required to establish the WebRTC connection.
+For example:
+A → "I want to call B"
+
+A → connection/media information
+        ↓
+Signaling Server
+        ↓
+B
+
+B → connection/media information
+        ↓
+Signaling Server
+        ↓
+A
+
+WebRTC itself does not define a mandatory signaling protocol. You can implement signaling using WebSocket, HTTP, etc.
+4. SDP
+You'll hear SDP when studying WebRTC.
+SDP = Session Description Protocol.
+It describes things such as:
+I support these codecs
+I want to send audio
+I want to send video
+Here is media/network information
+
+Very simplified flow:
+User A
+   │
+   │ SDP Offer
+   ▼
+Signaling Server
+   │
+   ▼
+User B
+   │
+   │ SDP Answer
+   ▼
+Signaling Server
+   │
+   ▼
+User A
+
+This is often called:
+Offer / Answer
+
+You don't need SDP internals for HLD.
+5. But how do they find each other over the internet?
+Here's the next problem.
+Your laptop might have a private IP:
+192.168.x.x
+
+because you're behind a router/NAT.
+Laptop
+   │
+   ▼
+Router / NAT
+   │
+   ▼
+Internet
+
+User B cannot simply connect to your private IP.
+This is where ICE, STUN and TURN come in.
+6. STUN Server
+STUN helps a client discover its public-facing IP/port mapping and assists WebRTC in finding a viable direct connection path.
+Conceptually:
+User A
+   │
+   │ "What address do others see me as?"
+   ▼
+STUN Server
+   │
+   ▼
+Public IP/port information
+
+Then WebRTC attempts to establish a direct connection.
+User A ═════════ User B
+
+STUN is generally lightweight because it doesn't normally carry the actual ongoing video stream.
+7. What if P2P doesn't work?
+Some networks/firewalls/NAT configurations prevent a direct connection.
+Then WebRTC can use a TURN server.
+TURN acts as a relay.
+Instead of:
+A ═════════ B
+
+we get:
+A
+ ╲
+  ╲ Video/Audio
+   ▼
+ TURN Server
+   │
+   │ Video/Audio
+   ▼
+   B
+
+So:
+STUN
+→ Helps establish/discover a direct path
+
+TURN
+→ Relays media when direct connectivity fails
+
+TURN is more expensive because actual audio/video traffic passes through it.
+8. Complete 1-to-1 architecture
+Now put everything together:
+             Signaling Server
+             /              \
+            /                \
+           ▼                  ▼
+       User A                User B
+          │                    │
+          │      STUN          │
+          └────── Server ──────┘
+          
+             Try direct P2P
+
+       User A ═════════════ User B
+                WebRTC
+
+If direct connection fails:
+User A
+   │
+   ▼
+TURN Server
+   │
+   ▼
+User B
+
+So for 1-to-1 calls, P2P can be a good architecture.
+9. Now the problem: Group video calls
+Suppose there are 4 users:
+A
+B
+C
+D
+
+One possibility is for everyone to connect directly to everyone.
+This is called a mesh architecture.
+      A
+    / | \
+   /  |  \
+  B---+---C
+   \  |  /
+    \ | /
+      D
+
+A sends video to:
+A → B
+A → C
+A → D
+
+B:
+B → A
+B → C
+B → D
+
+etc.
+For N users, each participant may need to upload their stream to approximately:
+N - 1 users
+
+That's the big problem.
+Imagine:
+10 participants
+
+Each user potentially uploads
+9 copies of their video 😵
+
+That's a lot of bandwidth and CPU/network overhead.
+So pure P2P mesh doesn't scale well for larger calls.
+
+
+!10. Enter SFU
+SFU = Selective Forwarding Unit.
+An SFU is a media server that receives audio/video streams from participants and selectively forwards those streams to other participants.
+
+Instead of:
+A → B
+A → C
+A → D
+
+A sends roughly one upstream stream/set of encoded layers toward the SFU:
+A
+ │
+ ▼
+SFU
+
+Same for everyone:
+          ┌─────┐
+     A ──►│     │──► A
+     B ──►│ SFU │──► B
+     C ──►│     │──► C
+     D ──►│     │──► D
+          └─────┘
+
+More accurately:
+        A ─────┐
+               │
+        B ─────┤
+               ▼
+             SFU
+               │
+        C ─────┤
+               │
+        D ─────┘
+
+SFU receives the streams and forwards appropriate streams to participants.
+11. Example
+Suppose:
+A = Nishchay
+B = Rahul
+C = Amit
+D = Priya
+
+You send your video:
+Nishchay
+    │
+    │ video stream
+    ▼
+   SFU
+
+SFU can forward it to:
+             ┌──→ Rahul
+Nishchay → SFU──→ Amit
+             └──→ Priya
+
+You don't need to upload three separate copies yourself.
+That saves a lot of client upload bandwidth.
+12. Why "Selective" Forwarding?
+Because the SFU doesn't necessarily forward every stream at maximum quality to every user.
+Suppose 100 people are in a meeting.
+You don't need 100 HD videos simultaneously.
+Maybe your screen shows:
+Speaker → HD
+
+6 visible participants → Medium quality
+
+Others → Low quality / no video
+
+The SFU can select which streams/layers to forward.
+A common technique is simulcast, where the sender provides multiple quality layers:
+User A
+  │
+  ├── High quality
+  ├── Medium quality
+  └── Low quality
+        ↓
+       SFU
+
+Then:
+Fast internet user
+← High quality
+
+Average connection
+← Medium quality
+
+Slow connection
+← Low quality
+
+This is one reason SFUs are powerful for conferencing.
+13. Does SFU process/mix everyone's video?
+Usually an SFU primarily forwards media rather than decoding and combining everything into one video.
+There's another architecture called MCU.
+MCU = Multipoint Control Unit.
+Conceptually:
+A ──┐
+B ──┤
+C ──┼──→ MCU → Mix/combine → Single stream
+D ──┘
+
+MCU may decode/process/mix streams and generate combined output.
+This requires significantly more server-side computation.
+SFU:
+Receive
+   ↓
+Select
+   ↓
+Forward
+
+MCU:
+Receive
+   ↓
+Decode
+   ↓
+Mix/process
+   ↓
+Encode
+   ↓
+Send
+
+Modern real-time conferencing architectures commonly make heavy use of SFU-style approaches, though actual products can use more complex/hybrid designs.
+P2P vs SFU vs MCU
+	P2P / Mesh	SFU	MCU
+Media path	Client ↔ Client	Client → SFU → Clients	Client → MCU → Clients
+Server media processing	Minimal	Mostly forwarding/selecting	Heavy processing
+Client upload	Increases with participants	Much lower	Low
+Server bandwidth	Low	High	High
+Server CPU	Low	Moderate	High
+Good for	Small/1:1 calls	Group conferencing	Server-mixed media
+
+
+14. Zoom/Meet-style HLD
+Don't memorize that a specific commercial product uses exactly this simplified architecture everywhere. But an SFU-based video-conferencing design could look like:
+                     Users
+                       │
+                       ▼
+                 API Gateway
+                       │
+              ┌────────┴────────┐
+              ▼                 ▼
+        Meeting Service    User Service
+              │
+              ▼
+       Signaling Service
+              │
+              ▼
+         SFU Cluster
+       /    /   \    \
+      ▼    ▼     ▼    ▼
+     U1   U2     U3   U4
+
+Media flow:
+                  SFU
+              ↗    ↑    ↖
+             /     |     \
+            /      |      \
+           A       B       C
+
+       Audio/Video streams
+
+Control/signaling and media are conceptually different:
+Signaling
+─────────
+Join meeting
+Leave meeting
+SDP/ICE information
+Mute/unmute state
+Connection setup
+
+
+Media
+─────
+Audio
+Video
+Screen sharing
+
+That's a very important HLD distinction.
+15. Full mental model
+Remember this chain:
+              Video Calling
+                    │
+                   WebRTC
+                    │
+        ┌───────────┴───────────┐
+        │                       │
+    Connection              Media
+     Setup
+        │
+   ┌────┼────┐
+   │    │    │
+Signaling STUN TURN
+              │
+              ▼
+         Media path
+              │
+       ┌──────┴──────┐
+       │             │
+     1-to-1        Group
+       │             │
+      P2P           SFU
+
+For an HLD interview, remember these six terms:
+WebRTC → real-time audio/video/data communication stack
+Signaling → exchanges information needed to establish the connection
+STUN → helps discover connectivity/public mapping
+TURN → relays media when direct connection isn't possible
+P2P → clients communicate directly; useful for small/1:1 scenarios
+SFU → receives and selectively forwards media; useful for scalable group calls
+If you understand this flow, you already have enough foundation to explain why a 1-to-1 calling system 
+and a 50-person meeting system need different architectures.

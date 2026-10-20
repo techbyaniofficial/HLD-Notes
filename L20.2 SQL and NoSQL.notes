@@ -1,0 +1,206 @@
+SQL Database
+SQL databases are relational databases that store data mainly in structured tables with rows and columns.
+Example:
+Users
++---------+----------+--------------------+
+| user_id | name     | email              |
++---------+----------+--------------------+
+| 101     | Nishchay | nish@example.com   |
+| 102     | Rahul    | rahul@example.com  |
++---------+----------+--------------------+
+
+Orders
++----------+---------+---------+
+| order_id | user_id | amount  |
++----------+---------+---------+
+| 5001     | 101     | 2500    |
+| 5002     | 101     | 1200    |
++----------+---------+---------+
+
+Tables can have relationships:
+Users
+  │
+  │ user_id
+  ↓
+Orders
+  │
+  │ order_id
+  ↓
+Order_Items
+
+Common SQL databases include PostgreSQL and MySQL.
+Main characteristics
+SQL databases generally provide:
+- Structured/schema-based data
+- Tables and relationships
+- SQL queries
+- JOIN operations
+- Strong transaction support
+- ACID transactions
+- Constraints such as foreign keys and uniqueness
+Example:
+SELECT *
+FROM Users
+JOIN Orders
+ON Users.user_id = Orders.user_id;
+
+When should you use SQL?
+Choose SQL when relationships, transactions and data correctness are important.
+For example:
+Banking
+Account A - ₹1000
+        ↓ transfer ₹500
+Account B + ₹500
+
+You don't want:
+Money deducted from A ✅
+Money added to B       ❌
+
+Transaction guarantees are extremely important here.
+Other common examples include:
+Payments, orders, inventory, booking systems, financial systems, employee management.
+NoSQL Database
+NoSQL refers to non-relational database models designed around access patterns other than traditional relational tables.
+Important: NoSQL does not mean "there is no structure."
+Different NoSQL databases organize data differently.
+Four common categories:
+NoSQL
+
+├── Key-Value
+├── Document
+├── Wide-column
+└── Graph
+
+1. Key-Value
+Very simple:
+Key             Value
+
+user:101   →   {...user data...}
+session:A1 →   {...session data...}
+
+Redis is a common example, although Redis is also widely used as an in-memory cache/data store.
+Useful for:
+Caching
+Sessions
+Counters
+Fast lookups
+
+2. Document database
+Stores document-like objects, commonly JSON/BSON-style documents.
+For example:
+{
+  "userId": 101,
+  "name": "Nishchay",
+  "skills": ["C++", "Angular"],
+  "address": {
+    "city": "Pune"
+  }
+}
+
+Another user document could contain somewhat different fields.
+MongoDB is a popular document database.
+Useful when your data is naturally document-shaped and the schema needs flexibility.
+3. Wide-column database
+Designed for very large distributed datasets and high-scale access patterns.
+Examples include Apache Cassandra.
+Often considered for things like:
+Large-scale event/time-series-like workloads
+Activity data
+High write throughput
+Distributed datasets
+
+4. Graph database
+Designed around:
+Nodes + Relationships
+
+Example:
+Nishchay ──follows──→ Rahul
+   │
+ follows
+   ↓
+  Amit
+
+Useful when relationships themselves are central to the queries, such as social graphs, recommendation/fraud relationship analysis, etc.
+SQL vs NoSQL
+For HLD, this comparison matters most:
+SQL	NoSQL
+Relational	Non-relational models
+Tables	Documents/key-value/graphs/etc.
+Usually predefined schema	Often more flexible schema
+JOINs are a core strength	Often designed to avoid cross-entity joins
+Excellent transaction support	Transaction capabilities vary by database
+Great for complex relationships	Often great for specific high-scale access patterns
+Can scale vertically and horizontally	Many NoSQL systems are designed around horizontal distribution
+
+
+One correction to a common interview shortcut:
+❌ SQL = vertical scaling, NoSQL = horizontal scaling
+
+That's too simplistic.
+Modern SQL databases can also scale horizontally, and the exact capabilities depend on the database/architecture.
+How to decide in an HLD interview?
+Ask yourself three major questions.
+Does the data have important relationships?
+For example:
+User
+ ↓
+Order
+ ↓
+Payment
+ ↓
+Invoice
+
+If you frequently need relationships, constraints and joins:
+SQL is often a natural choice.
+Do I need strong multi-record transactional guarantees?
+For:
+Bank transfer
+Payment
+Ticket booking
+Inventory/order transaction
+
+SQL is often the simpler/default choice.
+Is the workload huge, distributed, or naturally non-relational?
+For example, suppose you're storing massive amounts of:
+User activity events
+Chat/event streams
+Telemetry
+Feed-related data
+
+and your access pattern is simple but needs enormous horizontal scale.
+A suitable NoSQL database may be a better fit.
+Example: E-commerce
+You don't have to choose one database for the entire system.
+That's an important HLD concept.
+                    E-Commerce
+
+User Service ───────────→ SQL
+
+Order Service ──────────→ SQL
+
+Payment Service ────────→ SQL
+
+Product Catalog ────────→ Document/Search-oriented store
+
+Session/Cache ──────────→ Key-Value store
+
+Events ─────────────────→ Kafka
+
+Real systems frequently use multiple storage technologies depending on requirements. This is sometimes called polyglot persistence.
+Interview shortcut
+Don't memorize:
+SQL for small systems, NoSQL for large systems. ❌
+
+Instead remember:
+SQL → relationships + transactions + structured relational data
+
+NoSQL → specialized access patterns + flexible/non-relational models + distributed scale where appropriate
+
+So if an interviewer asks:
+"SQL or NoSQL?"
+Don't immediately answer one.
+Say something like:
+"It depends on our data model, access patterns, consistency and transaction requirements, and expected scale."
+
+Then choose the database based on those requirements.
+That's the system-design mindset they're looking for.

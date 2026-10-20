@@ -1,0 +1,292 @@
+What is OAuth 2.0?
+OAuth 2.0 is an authorization framework that allows one application to access specific resources from another service on a user's behalf, without giving the application the user's password.
+The easiest example is:
+“Continue with Google” or an app asking for permission to access your Google Drive/calendar.
+
+But one important distinction: OAuth itself is primarily about authorization/delegated access. “Login with Google” typically uses OpenID Connect (OIDC) on top of OAuth 2.0 for authentication.
+Simple example
+Suppose you use a photo-printing application:
+PhotoPrint App
+
+It wants to access photos from your cloud account.
+A bad approach would be:
+PhotoPrint:
+"Give me your Google username and password."
+
+❌
+
+You obviously shouldn't give your Google password to another application.
+Instead OAuth works like:
+You
+ │
+ ▼
+PhotoPrint App
+ │
+ │ "I need access to your photos"
+ ▼
+Google Authorization Server
+ │
+ │
+ ▼
+"Allow PhotoPrint to access your photos?"
+
+        Allow / Deny
+
+You click Allow.
+Google gives the application limited authorization without revealing your Google password.
+Main OAuth actors
+For HLD, know these four:
+Resource Owner
+      ↓
+     User
+
+Client
+      ↓
+Third-party application
+
+Authorization Server
+      ↓
+Authenticates user + issues tokens
+
+Resource Server
+      ↓
+API containing protected resources
+
+Example:
+User                 → You
+
+Client               → PhotoPrint App
+
+Authorization Server → Google's authorization system
+
+Resource Server      → Google Photos API
+
+How OAuth 2.0 works
+Let's understand the commonly used Authorization Code flow.
+Suppose your application wants access to a user's Google data.
+Step 1 — User chooses to connect
+User
+ ↓
+"Connect Google account"
+ ↓
+Your Application
+
+Your app redirects the user to the authorization provider.
+Your App
+   │
+   ▼
+Authorization Server
+
+Step 2 — User authenticates with the provider
+The provider handles authentication:
+User
+ ↓
+Google login
+ ↓
+Google verifies user
+
+Important:
+Your application never receives the user's Google password.
+
+Step 3 — User gives permission
+The authorization server might show:
+PhotoPrint wants permission to:
+
+✓ Read your photos
+✓ View your profile
+
+Allow?
+
+These permissions are represented using scopes.
+For example:
+photos.read
+calendar.read
+drive.read
+
+Scopes limit what the client is allowed to do.
+
+Step 4 — Authorization Code
+After approval:
+Authorization Server
+        │
+        │ Authorization Code
+        ▼
+      Client
+
+For example:
+code = X7ABC92
+
+This code is short-lived and is not the access token.
+
+
+Step 5 — Exchange code for access token
+The application/backend sends the code to the authorization server/token endpoint:
+Client
+   │
+   │ Authorization Code
+   ▼
+Authorization Server
+   │
+   │ Access Token
+   ▼
+Client
+
+Now the client has an access token.
+Step 6 — Access protected API
+The client can now call the resource server:
+Client
+   │
+   │ GET /photos
+   │ Access Token
+   ▼
+Resource Server
+
+The resource server validates the token/permissions:
+Valid token?
+     ↓
+Correct scope?
+     ↓
+Not expired?
+     ↓
+Return data ✅
+
+Complete flow
+Remember this:
+                  USER
+                   │
+                   ▼
+              Client App
+                   │
+                   │ Redirect
+                   ▼
+         Authorization Server
+                   │
+            Login + Consent
+                   │
+                   ▼
+          Authorization Code
+                   │
+                   ▼
+              Client App
+                   │
+              Exchange code
+                   ▼
+         Authorization Server
+                   │
+                   ▼
+              Access Token
+                   │
+                   ▼
+              Client App
+                   │
+           Access Token
+                   ▼
+           Resource Server
+                   │
+                   ▼
+             Protected Data
+
+That's the core OAuth flow.
+Access Token
+The access token represents the permissions granted to the client.
+For example:
+User allowed:
+
+read_photos ✅
+delete_photos ❌
+
+So the token might only permit:
+photos.read
+
+Access tokens are generally short-lived.
+Refresh Token
+You don't want the user to log in again every time an access token expires.
+So the authorization server may also issue:
+Access Token
++
+Refresh Token
+
+Later:
+Access Token expired ❌
+        ↓
+Refresh Token
+        ↓
+Authorization Server
+        ↓
+New Access Token ✅
+
+Exactly the access/refresh concept we discussed with JWT.
+OAuth and JWT — don't confuse them
+This is important.
+OAuth 2.0
+Defines a framework/flow for authorization and delegated access.
+
+JWT
+Is a token format.
+
+They are different things.
+OAuth access tokens may be JWTs, but they don't have to be.
+OAuth 2.0
+    ↓
+Authorization framework
+    ↓
+Access Token
+    ↓
+Could be JWT
+or another token format
+
+So:
+OAuth ≠ JWT
+
+OAuth vs JWT
+OAuth 2.0	JWT
+Authorization framework	Token format
+Defines how authorization/delegation works	Defines a way to represent signed claims
+Uses access tokens	Can be used as an access token
+Supports scopes/consent flows	Contains claims
+May use JWT	Doesn't require OAuth
+
+
+Authentication vs Authorization
+This distinction becomes very important now.
+Authentication
+Who are you?
+
+"I am Nishchay."
+
+Authorization
+What are you allowed to do?
+
+"You can read photos,
+but cannot delete them."
+
+OAuth 2.0 primarily solves:
+AUTHORIZATION
+
+For authentication/login identity on top of OAuth:
+OAuth 2.0
+    +
+OpenID Connect (OIDC)
+
+Interview-ready definition
+OAuth 2.0 is an authorization framework that allows a client application to obtain limited access to protected resources on behalf of a user without requiring the user to share their credentials with that application.
+
+For your HLD prep, remember:
+User
+ ↓
+Client
+ ↓
+Authorization Server
+ ↓
+Authorization Code
+ ↓
+Access Token
+ ↓
+Resource Server
+ ↓
+Protected Resource
+
+And the most important distinction:
+JWT = token format
+OAuth 2.0 = authorization framework
+OIDC = authentication/identity layer built on OAuth 2.0

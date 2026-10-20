@@ -1,0 +1,64 @@
+What is RabbitMQ?
+RabbitMQ is a message broker used to enable asynchronous communication between different services/applications.
+Remember the Message Queue concept we discussed:
+Producer → Message Queue → Consumer
+
+RabbitMQ is an actual technology that can implement this messaging pattern.
+Order Service
+   Producer
+      │
+      │ "Send order confirmation"
+      ▼
+┌───────────────┐
+│   RabbitMQ    │
+│     Queue     │
+└───────────────┘
+      │
+      ▼
+ Email Service
+    Consumer
+
+The Order Service doesn't have to wait for the Email Service to finish. It sends a message, and the Email Service can process it asynchronously.
+Important RabbitMQ components
+The actual RabbitMQ flow is usually:
+Producer
+   │
+   ▼
+Exchange
+   │
+   ▼
+ Queue
+   │
+   ▼
+Consumer
+
+Producer → sends messages.
+Exchange → receives messages and routes them to appropriate queues.
+Queue → stores messages until they're consumed.
+Consumer → receives and processes messages.
+Example
+User places an order:
+Order Service
+     │
+     ▼
+  RabbitMQ
+     │
+ ┌───┴────┐
+ ▼        ▼
+Email    Invoice
+Queue    Queue
+ │         │
+ ▼         ▼
+Email    Invoice
+Service  Service
+
+RabbitMQ can help with asynchronous processing, service decoupling, buffering traffic spikes, acknowledgements, retries, and reliable message delivery.
+RabbitMQ vs Message Queue
+This distinction is important:
+Message Queue = concept/pattern
+RabbitMQ = message-broker technology used to implement messaging/queues
+
+Other technologies/services include Amazon SQS, Azure Service Bus, ActiveMQ, etc.
+And then you'll encounter Kafka, which is extremely important in HLD but works differently from a traditional message broker/queue.
+For interviews, remember:
+RabbitMQ is a message broker that routes and delivers messages between producers and consumers, commonly using queues to support asynchronous and decoupled communication.

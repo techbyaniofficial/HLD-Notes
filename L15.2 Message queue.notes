@@ -1,0 +1,116 @@
+What is a Message Queue?
+
+A Message Queue is a component that temporarily stores messages/tasks sent by one service until another service is ready to process them.
+
+It is mainly used for asynchronous communication between services.
+
+Basic architecture:
+
+Producer              Message Queue             Consumer
+   │                        │                       │
+   │── Send Message ───────►│                       │
+   │                        │                       │
+   │                        │──── Message ─────────►│
+   │                        │                       │
+   │                        │                 Process Message
+Producer → creates/sends the message
+Queue → stores the message temporarily
+Consumer → takes and processes the message
+Simple example
+
+Suppose you place an order on an e-commerce website.
+
+Without a queue, the Order Service might synchronously do everything:
+
+User
+ ↓
+Order Service
+ ↓
+Payment
+ ↓
+Inventory Update
+ ↓
+Send Email
+ ↓
+Send SMS
+ ↓
+Generate Invoice
+ ↓
+Response to user
+
+The user may have to wait while all these operations complete.
+
+Instead, some non-immediate work can be asynchronous:
+
+                  ┌──→ Email Consumer
+Order Service     │
+      │           │
+      ▼           │
+ Message Queue ───┼──→ SMS Consumer
+                  │
+                  └──→ Invoice Consumer
+
+Order Service can put events/tasks into the queue:
+
+"Send order confirmation email"
+"Send SMS"
+"Generate invoice"
+
+Consumers process them independently.
+
+So the user doesn't necessarily need to wait for every background task.
+
+Why use Message Queues?
+
+The important HLD benefits are:
+
+1. Asynchronous processing
+
+Producer doesn't always need to wait for the consumer.
+
+Producer → Queue → continue other work
+
+2. Decoupling
+
+Producer doesn't need tight knowledge of how the consumer processes the message.
+
+Order Service → Queue → Email Service
+
+3. Handles traffic spikes
+
+Suppose normally:
+
+1,000 orders/minute
+
+Suddenly:
+
+50,000 orders/minute
+
+Instead of overwhelming a downstream service, messages can accumulate in the queue and consumers process them at their supported rate.
+
+Huge traffic
+    ↓
+████████████ Queue
+    ↓
+Consumers process gradually
+
+4. Better fault tolerance
+
+Suppose the Email Service temporarily goes down.
+
+Order Service → Queue → ❌ Email Service
+
+Messages can remain available for later processing/retry, depending on the queue's configuration.
+
+The Order Service doesn't necessarily have to fail just because email delivery is temporarily unavailable.
+
+Examples
+
+You'll commonly hear:
+
+RabbitMQ
+Apache Kafka
+Amazon SQS
+Azure Service Bus
+
+Kafka has some important differences from a traditional queue—it's better thought of as a distributed event-streaming/log system—but we'll cover that separately.

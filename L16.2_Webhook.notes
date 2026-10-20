@@ -1,0 +1,60 @@
+Webhook is a way for one system to automatically notify another system when a specific event happens, usually by sending an HTTP request to a URL provided by the receiving system.
+
+Webhook = “When something happens, call this URL and tell me.”
+
+Simple example
+
+Suppose your application uses a payment provider.
+
+Without a webhook, your application might repeatedly ask:
+
+App → Payment Service: "Payment completed?"
+App → Payment Service: "Payment completed?"
+App → Payment Service: "Payment completed?"
+
+This is polling.
+
+With a webhook:
+
+User makes payment
+       ↓
+Payment Provider
+       ↓
+Payment successful
+       ↓
+POST /webhooks/payment
+       ↓
+Your Server
+       ↓
+Update order → PAID
+
+Your application gives the payment provider a webhook URL, for example:
+
+POST /webhooks/payment
+
+When payment succeeds, the provider sends something like:
+
+{
+  "event": "payment.success",
+  "orderId": "12345",
+  "amount": 2000
+}
+
+Your server receives it and processes the event.
+
+Webhook vs Polling
+Polling	Webhook
+Client repeatedly asks for status	Server/provider notifies automatically
+Pull-based	Push/event-driven
+Many unnecessary requests possible	Request occurs when event happens
+Updates may be delayed by polling interval	Usually near real-time
+Important HLD points
+
+For now, remember these:
+
+Webhooks are event-driven callbacks over HTTP
+Usually the receiver exposes an HTTP endpoint
+Common in payments, GitHub events, order updates, third-party integrations
+Webhooks may be delivered more than once, so handlers should generally be idempotent
+Verify webhook authenticity, e.g. using signatures/secrets
+Failed deliveries are commonly retried

@@ -1,0 +1,165 @@
+
+Apache Kafka is a distributed event-streaming platform used to publish, store, and consume large 
+volumes of events/messages in real time.
+For HLD, think:
+Kafka = a scalable, durable event stream where producers publish events and consumers read those 
+events.
+
+Basic flow:
+Producer                    Kafka                     Consumer
+   │                          │                           │
+   │── OrderCreated ─────────►│                           │
+   │── OrderCreated ─────────►│                           │
+   │                          │──── OrderCreated ────────►│
+   │                          │──── OrderCreated ────────►│
+
+For example, an Order Service produces:
+OrderCreated
+PaymentCompleted
+OrderShipped
+
+Other services can consume these events:
+                         Kafka
+                           │
+Order Service ────────────►│
+                           │
+                 ┌─────────┼─────────┐
+                 ▼         ▼         ▼
+             Inventory   Email    Analytics
+              Service   Service    Service
+
+This fits very naturally with the Event-Driven Architecture we just discussed.
+Core Kafka concepts
+The most important terms are:
+Producer — publishes events to Kafka.
+Order Service → Kafka
+
+Topic — a named stream/category of events.
+For example:
+order-events
+payment-events
+user-events
+
+So:
+Producer
+   ↓
+"order-events" Topic
+   ↓
+Consumers
+
+Partition — a topic is divided into partitions so Kafka can handle more data in parallel.
+Topic: order-events
+
+Partition 0 → E1 → E4 → E7 → ...
+Partition 1 → E2 → E5 → E8 → ...
+Partition 2 → E3 → E6 → E9 → ...
+
+Different partitions can be processed in parallel, which is a major reason Kafka can achieve high throughput.
+Kafka guarantees ordering within a partition, not necessarily across the entire topic.
+Broker — a Kafka server. A Kafka cluster consists of multiple brokers.
+            Kafka Cluster
+
+       ┌────────┐
+       │Broker 1│
+       └────────┘
+
+       ┌────────┐
+       │Broker 2│
+       └────────┘
+
+       ┌────────┐
+       │Broker 3│
+       └────────┘
+
+Consumer — reads events from Kafka.
+Consumer Group — multiple consumers can work together to process a topic.
+             Topic
+       P0    P1    P2
+        │     │     │
+        ▼     ▼     ▼
+       C1    C2    C3
+
+        Consumer Group
+
+This allows processing to scale horizontally.
+One very important Kafka idea: Offset
+Within a partition, each record has a position called an offset.
+Partition 0
+
+Offset
+  0      Order A
+  1      Order B
+  2      Order C
+  3      Order D
+          ↑
+      Consumer
+
+The consumer tracks its progress.
+If it processed up to offset 2, it knows where to continue.
+This also makes it possible to re-read/replay old events while they are still retained.
+Kafka vs traditional message queue
+This is the important part.
+With a traditional queue, you often think:
+Producer → Queue → Consumer
+
+A message is processed and typically removed/acknowledged according to the broker's semantics.
+Kafka behaves more like a durable distributed log:
+Producer
+   ↓
+Kafka Topic
+
+E1 → E2 → E3 → E4 → E5 → E6
+ ↑              ↑
+Consumer A      Consumer B
+
+Kafka retains events according to its configured retention policy, even after consumers have read them.
+Therefore multiple independent consumers can read the same events:
+               order-events
+                    │
+        ┌───────────┼───────────┐
+        ▼           ▼           ▼
+    Analytics     Email      Inventory
+
+And a consumer can potentially replay earlier events.
+Kafka vs RabbitMQ
+Since you just learned RabbitMQ:
+RabbitMQ	Kafka
+Message broker	Distributed event-streaming platform
+Queue/routing oriented	Durable log/topic oriented
+Messages generally processed via queues	Events retained based on retention policy
+Strong routing patterns	Strong event streaming
+Good for task/work queues	Excellent for high-throughput event streams
+Replay is not its core model	Event replay is a core capability
+
+
+Don't memorize “Kafka is always better than RabbitMQ.” They solve overlapping but different problems.
+Where would we use Kafka?
+Examples:
+Order events
+Payment events
+User activity
+Application logs
+Clickstream data
+Real-time analytics
+Notifications/events
+Data pipelines
+Microservice event communication
+
+For example:
+                Kafka
+                  │
+Amazon Order ─────► OrderCreated
+                  │
+          ┌───────┼─────────┐
+          ▼       ▼         ▼
+      Inventory  Fraud   Analytics
+
+Each system can independently consume OrderCreated.
+For your HLD interviews
+You don't need to learn Kafka commands/configuration right now.
+Understand these concepts properly:
+Producer → Topic → Partition → Broker → Consumer → Consumer Group → Offset
+And remember:
+Kafka is a distributed event-streaming platform that allows producers to publish events to topics and consumers to process those events independently. It provides high throughput, durability, horizontal scalability, and event replay.
+
+Once these concepts are clear, you have enough Kafka knowledge to start using it in HLD problems.

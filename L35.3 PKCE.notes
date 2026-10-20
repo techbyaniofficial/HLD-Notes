@@ -1,0 +1,260 @@
+PKCE = Proof Key for Code Exchange, pronounced “pixy.”
+PKCE is an extension to the OAuth 2.0 Authorization Code Flow that protects against an attacker stealing an authorization code and exchanging it for an access token.
+PKCE ensures that the application that started the OAuth flow is the one that can complete it.
+
+It is especially important for browser/mobile/public clients, and modern OAuth guidance recommends using it broadly.
+First, what's the problem?
+Remember normal Authorization Code Flow:
+Client
+   │
+   │ Redirect user
+   ▼
+Authorization Server
+   │
+   │ User login + consent
+   ▼
+Authorization Code
+   │
+   ▼
+Client
+   │
+   │ Exchange code
+   ▼
+Authorization Server
+   │
+   ▼
+Access Token
+
+Suppose authorization code is:
+code = ABC123
+
+If an attacker manages to steal/intercept that code, we don't want them to be able to do:
+Attacker
+   │
+   │ ABC123
+   ▼
+Authorization Server
+   │
+   ▼
+Access Token ❌
+
+PKCE adds an extra proof.
+How PKCE works
+There are two important terms:
+Code Verifier
+code_verifier
+
+and
+Code Challenge
+code_challenge
+
+The client first generates a random secret value:
+code_verifier = random_long_string
+
+For example, conceptually:
+code_verifier = "X7a91KpQ..."
+
+This stays with the client.
+Then it hashes the verifier, normally using SHA-256:
+SHA256(code_verifier)
+          ↓
+    code_challenge
+
+More precisely, the challenge is typically the Base64URL-encoded SHA-256 result.
+So:
+Code Verifier
+     │
+     │ SHA-256 + Base64URL
+     ▼
+Code Challenge
+
+Step 1 — Client starts authorization
+Client sends the code challenge to the authorization server:
+Client
+  │
+  │ code_challenge = XYZ
+  ▼
+Authorization Server
+
+Notice:
+code_verifier ❌ NOT sent yet
+
+code_challenge ✅ sent
+
+The authorization server associates that challenge with this authorization request.
+Step 2 — Login and consent
+Same OAuth flow:
+User
+ ↓
+Authorization Server
+ ↓
+Login
+ ↓
+Consent
+
+Then the server returns:
+Authorization Code
+
+to the client.
+Authorization Server
+       │
+       │ code = ABC123
+       ▼
+     Client
+
+Step 3 — Client exchanges the code
+Now the important part.
+The client sends:
+Authorization Code
++
+Code Verifier
+
+to the token endpoint:
+Client
+   │
+   │ code = ABC123
+   │ code_verifier = X7a91KpQ...
+   ▼
+Authorization Server
+
+The authorization server calculates:
+SHA256(received code_verifier)
+           ↓
+   calculated challenge
+
+and compares it with the challenge stored earlier:
+Calculated Challenge
+        ==
+Original Code Challenge?
+
+If they match:
+YES ✅
+ ↓
+Access Token
+
+If they don't:
+NO ❌
+ ↓
+Reject request
+
+Complete PKCE flow
+This is the diagram you should remember:
+CLIENT                               AUTH SERVER
+
+Generate:
+code_verifier
+     │
+     ↓
+SHA256 + Base64URL
+     │
+     ↓
+code_challenge
+
+
+Client ─── code_challenge ─────────────►
+
+                Login + Consent
+
+Client ◄── Authorization Code ──────────
+
+
+Client ─── Authorization Code ─────────►
+       └── code_verifier ──────────────►
+
+                                      │
+                              Hash verifier
+                                      │
+                                      ▼
+                              Compare challenge
+
+                                    MATCH ✅
+                                      │
+                                      ▼
+Client ◄────── Access Token ───────────
+
+What if an attacker steals the code?
+Suppose:
+Authorization Code = ABC123
+
+gets stolen.
+Attacker tries:
+Attacker
+   │
+   │ code = ABC123
+   ▼
+Authorization Server
+
+Server asks for the matching:
+code_verifier
+
+But attacker doesn't have it.
+Attacker:
+
+Authorization Code ✅
+Code Verifier      ❌
+
+Therefore:
+Cannot prove possession
+        ↓
+No Access Token ❌
+
+That's the main purpose of PKCE.
+Why not just use client_secret?
+A backend/confidential application can securely store:
+client_secret
+
+But consider a mobile app or browser-based app.
+The application is distributed to the user's device/browser:
+Mobile App
+Browser App
+Desktop App
+
+You cannot safely embed one permanent secret and assume nobody can extract it.
+So:
+Backend Server
+→ Can securely keep client_secret
+
+Mobile/Browser App
+→ Cannot reliably protect a static client_secret
+
+PKCE solves this using a new random verifier for each authorization attempt rather than relying on an embedded static secret.
+Client Secret vs PKCE
+Client Secret	PKCE
+Static credential	Per-authorization random verifier
+Stored by confidential client	Generated dynamically
+Good for secure backend clients	Essential for public clients
+Proves client authentication	Binds authorization request to token exchange
+Could be dangerous if embedded in frontend/mobile app	No permanent secret needs to be embedded
+
+
+They are not necessarily alternatives. Confidential clients can use client authentication and PKCE.
+Normal OAuth vs OAuth + PKCE
+Normal authorization code flow:
+Authorization Code
+       ↓
+Access Token
+
+PKCE:
+Authorization Code
+       +
+Code Verifier
+       ↓
+Server verifies against
+earlier Code Challenge
+       ↓
+Access Token
+
+Interview-ready definition
+PKCE is an OAuth extension that binds the authorization request to the token exchange using a dynamically generated code verifier and code challenge, preventing a stolen authorization code from being exchanged by an attacker.
+
+For HLD/interviews, remember these four words:
+Code Verifier
+     ↓
+Code Challenge
+     ↓
+Authorization Code
+     ↓
+Access Token
+
+And the central idea:
+Even if you steal my authorization code, you still can't exchange it because you don't have my code verifier.

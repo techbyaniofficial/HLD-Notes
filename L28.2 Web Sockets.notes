@@ -1,0 +1,226 @@
+WebSocket is a communication protocol that creates a long-lived, two-way (bidirectional) connection between a client and server.
+Once the connection is established, both client and server can send data to each other at any time without creating a new HTTP request for every message.
+
+It is especially useful for real-time applications.
+Common examples: chat applications, live notifications, multiplayer games, live dashboards, collaborative editing, and live price updates.
+Why do we need WebSocket?
+With normal HTTP:
+Client                      Server
+  │                           │
+  │──── HTTP Request ────────►│
+  │◄──── HTTP Response ───────│
+  │                           │
+  │──── HTTP Request ────────►│
+  │◄──── HTTP Response ───────│
+
+Communication is primarily request → response.
+If the server gets some new information, it normally can't just send an ordinary HTTP response to the client unless there's an outstanding request/streaming mechanism.
+For a chat application, repeatedly asking:
+Client → Any new message?
+Server → No
+
+Client → Any new message?
+Server → No
+
+Client → Any new message?
+Server → Yes
+
+is polling and can create unnecessary requests.
+With WebSocket:
+Client  ═════════════════════ Server
+          Persistent
+           Connection
+
+Now either side can send messages:
+Client ───── message ───────► Server
+
+Client ◄──── new message ──── Server
+
+Client ◄──── notification ─── Server
+
+That's the key advantage.
+How does WebSocket work?
+1. Client initially connects using HTTP
+The client sends an HTTP request asking the server to upgrade the connection to WebSocket.
+Conceptually:
+Client
+   │
+   │ HTTP request
+   │ Upgrade: websocket
+   ▼
+Server
+
+The server accepts the upgrade:
+Server
+   │
+   │ 101 Switching Protocols
+   ▼
+Client
+
+This process is called the WebSocket handshake.
+2. WebSocket connection is established
+After the handshake:
+Client ═════════════════ Server
+          WebSocket
+
+The underlying TCP connection remains open.
+Unlike ordinary request-response usage, we don't close the connection after each message.
+3. Both sides can communicate
+Now:
+Client ─── "Hello" ─────────► Server
+
+Client ◄── "Hi!" ─────────── Server
+
+Client ◄── Notification ──── Server
+
+Client ─── Typing... ───────► Server
+
+This is called full-duplex communication.
+Full-duplex = both sides can send data independently over the established connection.
+
+Example: WhatsApp-like chat
+Suppose User A sends a message to User B.
+Both users have WebSocket connections:
+User A
+  ║
+  ║ WebSocket
+  ║
+Chat Server
+  ║
+  ║ WebSocket
+  ║
+User B
+
+User A sends:
+"Hello"
+   ↓
+Chat Server
+
+The server identifies that the message belongs to User B and pushes it through B's active WebSocket connection:
+User A
+  │
+  │ "Hello"
+  ▼
+Chat Server
+  │
+  │ "Hello"
+  ▼
+User B
+
+User B doesn't need to repeatedly call:
+GET /messages
+GET /messages
+GET /messages
+
+The server can push the message immediately.
+WebSocket in large-scale HLD
+At small scale:
+Users
+  │
+  ▼
+WebSocket Server
+
+But imagine 10 million connected users.
+You need multiple WebSocket servers:
+                 Users
+                   │
+                   ▼
+              Load Balancer
+              /     |      \
+             ▼      ▼       ▼
+           WS-1    WS-2    WS-3
+            ║       ║       ║
+          Users   Users   Users
+
+Now there's another problem.
+Suppose:
+User A → connected to WS-1
+User B → connected to WS-3
+
+A sends B a message.
+WS-1 needs a way to get that event to the server holding B's connection.
+A scalable architecture might therefore use messaging/pub-sub infrastructure:
+User A
+   ║
+  WS-1
+   │
+   ▼
+Message Broker / Pub-Sub
+   │
+   ▼
+  WS-3
+   ║
+User B
+
+Technologies such as Kafka or Redis Pub/Sub may appear in architectures around this problem, depending on the requirements.
+This is why your earlier topics start connecting together:
+Load Balancer
+      +
+WebSocket Servers
+      +
+Message Broker / Pub-Sub
+      +
+Redis / presence store
+      +
+Database
+
+Together they can form parts of a large-scale real-time system.
+WebSocket vs HTTP
+HTTP	WebSocket
+Primarily request-response	Bidirectional communication
+Client initiates requests	Client & server can send
+Typically short-lived interactions	Long-lived connection
+More overhead for repeated requests	Efficient for frequent real-time messages
+REST APIs	Chat/live updates
+
+
+WebSocket doesn't replace REST.
+A system can use both:
+REST
+→ Login
+→ Get profile
+→ Fetch message history
+
+WebSocket
+→ New messages
+→ Typing indicators
+→ Online status
+→ Live notifications
+
+That's very common.
+WebSocket vs Polling
+Polling
+
+Client → Server
+Client → Server
+Client → Server
+Client → Server
+Client → Server
+
+"Anything new?"
+
+vs.
+WebSocket
+
+Client ═════════ Server
+          │
+          │ Something happened
+          ▼
+       Push data
+
+For frequent real-time communication, WebSocket avoids repeated polling requests.
+Interview definition
+WebSocket is a protocol that establishes a persistent, full-duplex connection between a client and server, allowing both sides to send data independently in real time.
+
+For your HLD preparation, remember this flow:
+HTTP Handshake
+      ↓
+Upgrade to WebSocket
+      ↓
+Persistent TCP connection
+      ↓
+Bidirectional communication
+      ↓
+Client ↔ Server
+
+And the main trigger for thinking about WebSockets in a system-design interview is: “Do I need frequent, low-latency, two-way real-time communication?”

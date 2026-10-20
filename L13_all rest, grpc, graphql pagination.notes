@@ -1,0 +1,349 @@
+
+This is the main comparison you should remember:
+
+|                       | REST                               | gRPC                   | GraphQL                               |
+| --------------------- | ---------------------------------- | ---------------------- | ------------------------------------- |
+| Style                 | Resource-based API                 | RPC                    | Query-based API                       |
+| Think of              | `/users/101`                       | `getUser(101)`         | `user { name }`                       |
+| Common data format    | JSON                               | Protobuf               | Usually JSON responses                |
+| Transport             | Usually HTTP                       | HTTP/2                 | Usually HTTP                          |
+| Client chooses fields | Limited/endpoint-defined           | Contract-defined       | ✅ Yes                                 |
+| Human readable        | High                               | Lower on wire          | High                                  |
+| Streaming             | Possible, but not core REST itself | ✅ Strong support       | Possible via subscriptions/transports |
+| Common use            | Public/web APIs                    | Internal microservices | Flexible frontend APIs                |
+| Pagination            | Offset/Cursor                      | Tokens/Cursor          | Offset/Cursor                         |
+
+
+Remember them like this:
+
+REST
+"What RESOURCE do you want?"
+
+GET /users/101
+gRPC
+"What METHOD do you want to call?"
+
+getUser(101)
+GraphQL
+"What DATA/FIELDS exactly do you want?"
+
+user {
+    name
+    email
+}
+
+
+!1. REST API!
+
+REST (Representational State Transfer) is an architectural style used for communication between client and server, typically over HTTP.
+
+REST APIs expose resources through URLs and use HTTP methods to perform operations on those resources.
+
+Example:
+
+GET    /users/101      → Get user
+POST   /users          → Create user
+PUT    /users/101      → Replace/update user
+PATCH  /users/101      → Partially update user
+DELETE /users/101      → Delete user
+
+Data is commonly exchanged using JSON.
+
+{
+  "id": 101,
+  "name": "Nishchay"
+}
+Important REST characteristics
+Resource-based URLs
+Usually HTTP/HTTPS
+Stateless requests
+Uses HTTP methods
+Uses HTTP status codes
+Commonly JSON
+Simple and widely used
+Pagination in REST
+
+Suppose:
+
+GET /products
+
+There are 10 million products.
+
+Returning all of them is inefficient, so we return smaller chunks.
+
+#A. Offset Pagination
+
+Client provides limit and offset.
+
+GET /products?limit=20&offset=0
+
+→ First 20 records
+
+Next:
+
+GET /products?limit=20&offset=20
+
+→ Next 20 records
+
+Think:
+
+offset = how many records to skip
+limit  = how many records to return
+
+Advantages: Simple and supports jumping to arbitrary pages.
+
+Disadvantages: Large offsets can become expensive, and inserts/deletes while paginating can cause duplicates or skipped records.
+
+
+
+#B. Cursor Pagination
+
+Instead of saying "skip N records", we say :
+
+Give me records after this position.
+
+First request:
+
+GET /messages?limit=20
+
+Response:
+
+{
+  "messages": ["..."],
+  "nextCursor": "msg_120"
+}
+
+Next:
+
+GET /messages?limit=20&cursor=msg_120
+
+Conceptually:
+
+Page 1
+
+101 102 103 104 105
+                ↑
+              cursor
+
+Page 2
+
+106 107 108 109 110
+
+Advantages: Efficient for large/changing datasets and good for infinite scrolling.
+
+Disadvantage: Usually can't conveniently say "Take me directly to page 500."
+
+REST pagination summary
+Offset	Cursor
+limit + offset	limit + cursor
+Simple	Slightly complex
+Jump to arbitrary page ✅	Usually ❌
+Large offsets can be slow	Efficient
+Changing data can cause issues	Better for changing data
+Traditional pages	Feeds/chat/infinite scroll
+
+
+
+
+!2. gRPC
+
+gRPC = Remote Procedure Call framework.
+
+It allows one service to call a function/method exposed by another service almost like calling a local function.
+
+Order Service
+      │
+      │ getUser(101)
+      ▼
+ User Service
+
+Rather than thinking:
+
+GET /users/101
+
+you can conceptually think:
+
+userService.getUser(101)
+
+gRPC commonly uses Protocol Buffers (Protobuf) to define service contracts and serialize data.
+
+Example conceptually:
+
+service UserService {
+
+    GetUser(userId)
+        → User
+}
+Important gRPC points
+Commonly uses Protocol Buffers
+Binary serialization
+Runs over HTTP/2 in its standard implementation
+Strongly typed contracts
+Supports streaming
+Efficient service-to-service communication
+Popular in microservice architectures
+
+Typical architecture:
+
+             REST
+Client ─────────────→ API Gateway
+                         │
+                         │ gRPC
+                  ┌──────┼───────┐
+                  ▼      ▼       ▼
+                User   Order   Payment
+               Service Service Service
+
+REST is often convenient for public/client-facing APIs, while gRPC can be a strong option for internal service-to-service communication. This isn't a hard rule.
+
+Pagination in gRPC
+
+Pagination concept is basically the same.
+
+For example, request:
+
+ListProducts {
+    page_size: 20
+    page_token: "abc123"
+}
+
+Response:
+
+products: [...]
+next_page_token: "xyz456"
+
+Then:
+
+ListProducts {
+    page_size: 20
+    page_token: "xyz456"
+}
+
+So page_token acts like a cursor.
+
+Important:
+
+Pagination isn't fundamentally a REST feature. It's a data-retrieval technique.
+
+REST, gRPC and GraphQL can all implement pagination.
+
+
+!3. GraphQL
+
+GraphQL is an API query language and runtime where the client can specify exactly which fields it wants.
+
+Suppose a user contains:
+
+id
+name
+email
+phone
+address
+DOB
+profilePicture
+followers
+
+But your UI only needs:
+
+name
+profilePicture
+
+With GraphQL:
+
+query {
+  user(id: 101) {
+    name
+    profilePicture
+  }
+}
+
+Response:
+
+{
+  "name": "Nishchay",
+  "profilePicture": "..."
+}
+
+The client requested only the fields it needed.
+
+Why GraphQL?
+
+One major motivation is reducing over-fetching and making it easier for clients to fetch related data through a flexible schema.
+
+Over-fetching: Server returns much more data than the client needs.
+
+Under-fetching: Client needs multiple requests to gather the data required for one screen/use case.
+
+GraphQL can help with both, although poorly designed GraphQL APIs can introduce their own performance issues.
+
+Important GraphQL points
+Client specifies required fields
+Strongly typed schema
+Typically exposed through a single HTTP endpoint
+Helps with over-fetching/under-fetching
+Flexible for frontend clients
+Can make caching/query-cost control more complicated than straightforward REST APIs
+Pagination in GraphQL
+
+GraphQL can also use offset or cursor-based pagination.
+
+Cursor pagination is very common.
+
+A common style is:
+
+query {
+  users(first: 10, after: "cursor123") {
+    edges {
+      node {
+        id
+        name
+      }
+      cursor
+    }
+
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+  }
+}
+
+Don't memorize this syntax for HLD.
+
+Just understand:
+
+Give me first 10 records
+        ↓
+Server returns records
+        +
+endCursor
+        +
+hasNextPage
+        ↓
+Client sends endCursor
+        ↓
+Next 10 records
+
+This is commonly known as cursor/connection-style pagination.
+
+REST vs gRPC vs GraphQL
+
+
+for pagination, don't think there are three completely different concepts.
+
+                 PAGINATION
+                     │
+           ┌─────────┴─────────┐
+           ▼                   ▼
+        OFFSET              CURSOR
+      Pagination           Pagination
+           │                   │
+           └─────────┬─────────┘
+                     ▼
+            Can be exposed via
+                     │
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+        REST       gRPC      GraphQL
+
+So for interviews, the core pagination concepts you really need to understand are Offset vs Cursor. REST/gRPC/GraphQL are simply different API approaches through which those pagination strategies can be exposed.

@@ -1,0 +1,230 @@
+What is a JWT Token?
+JWT = JSON Web Token.
+JWT is a compact token format commonly used to carry authenticated user identity and claims between a client and server.
+After login, the server can issue a JWT. The client sends it with later requests, and the server verifies it before allowing access.
+
+A JWT is usually signed, not encrypted.
+Simple login flow
+Suppose you log into an application:
+Client                           Server
+  │                                │
+  │── username + password ────────►│
+  │                                │
+  │                         Verify credentials
+  │                                │
+  │◄──────── JWT token ────────────│
+
+The client now has something like:
+eyJhbGciOi...eyJ1c2VySWQi...abcxyz
+
+For subsequent requests:
+Client
+   │
+   │ GET /profile
+   │ Authorization: Bearer <JWT>
+   ▼
+Server
+   │
+   │ Verify JWT
+   ▼
+Return profile
+
+So the user doesn't send username/password with every request.
+What's inside a JWT?
+JWT typically has 3 parts:
+HEADER.PAYLOAD.SIGNATURE
+
+For example:
+xxxxx.yyyyy.zzzzz
+
+1. Header
+Contains information about the token, such as the signing algorithm.
+Conceptually:
+{
+  "alg": "RS256",
+  "typ": "JWT"
+}
+
+2. Payload
+Contains claims.
+For example:
+{
+  "sub": "user_101",
+  "role": "admin",
+  "exp": 1791300000
+}
+
+Claims can represent things such as:
+User ID
+Role
+Issuer
+Audience
+Expiration time
+
+Important:
+The JWT payload is normally encoded, not encrypted.
+
+So don't put passwords or sensitive secrets inside a normal JWT.
+3. Signature
+The signature protects the token against tampering.
+Conceptually:
+Header + Payload
+       ↓
+Signing algorithm
+       +
+Secret/private key
+       ↓
+Signature
+
+Final token:
+Header.Payload.Signature
+
+Why is the signature important?
+Suppose the original JWT says:
+{
+  "userId": 101,
+  "role": "user"
+}
+
+An attacker changes it to:
+{
+  "userId": 101,
+  "role": "admin"
+}
+
+The payload itself can be modified, but then the existing signature will no longer match.
+Modified JWT
+     ↓
+Server verifies signature
+     ↓
+Signature invalid ❌
+     ↓
+Reject request
+
+That's the core security property of a signed JWT: integrity/authenticity of the claims.
+JWT and stateless authentication
+This connects directly to the stateless system concept you just learned.
+With traditional server-side sessions:
+Client
+   ↓
+session_id
+   ↓
+Server
+   ↓
+Session Store
+   ↓
+user information
+
+With a self-contained JWT access token:
+Client
+   │
+   │ JWT
+   ▼
+Any Application Server
+   │
+   │ Verify signature + claims
+   ▼
+Request processed
+
+For example:
+                    Load Balancer
+                   /      |      \
+                  ↓       ↓       ↓
+                 S1      S2      S3
+
+If each server has what it needs to verify the JWT, a request can go to any of them.
+Request 1 → S1 ✅
+Request 2 → S3 ✅
+Request 3 → S2 ✅
+
+This can make authentication stateless at the application-server layer.
+Access Token vs Refresh Token
+You'll often see JWTs used as access tokens.
+Access tokens should generally be relatively short-lived:
+Access Token
+Expires → e.g. 15 minutes
+
+When it expires, a separate refresh token can be used to obtain a new access token:
+Login
+  ↓
+Access Token + Refresh Token
+  ↓
+Access token expires
+  ↓
+Send Refresh Token
+  ↓
+Authentication Server
+  ↓
+New Access Token
+
+Conceptually:
+Access Token
+→ Used frequently to access APIs
+→ Short-lived
+
+Refresh Token
+→ Used to obtain new access tokens
+→ Usually longer-lived
+→ Must be protected carefully
+
+A refresh token does not have to be a JWT.
+JWT authentication flow
+Remember this:
+1. User logs in
+       ↓
+2. Server verifies credentials
+       ↓
+3. Server issues JWT
+       ↓
+4. Client stores/holds token
+       ↓
+5. Client sends JWT with API request
+       ↓
+6. Server verifies:
+       │
+       ├── Signature
+       ├── Expiration
+       ├── Issuer/Audience as applicable
+       └── Required claims/permissions
+       ↓
+7. Allow or reject request
+
+JWT vs Session
+Session	JWT-based auth
+Session state usually stored server-side	Claims can be carried in token
+Client sends session ID	Client sends token
+Server may look up session store	Token can often be verified locally
+Revocation can be straightforward	Immediate revocation can be harder
+Stateful session management	Can support stateless API servers
+
+
+JWT isn't automatically better than sessions. The choice depends on the system.
+In HLD
+You might draw:
+Client
+  │
+  │ Login
+  ▼
+Auth Service
+  │
+  │ JWT
+  ▼
+Client
+
+Then:
+
+Client
+  │ JWT
+  ▼
+API Gateway
+  │
+  │ Verify/authenticate
+  ▼
+Backend Services
+
+Depending on the architecture, JWT validation can happen at the API Gateway, individual services, or both with appropriate trust boundaries.
+Interview definition
+JWT (JSON Web Token) is a compact token format containing claims that can be cryptographically signed so a server can verify that the claims haven't been tampered with. It is commonly used for authentication and authorization in stateless APIs.
+
+For your HLD prep, remember:
+Login → JWT issued → client sends JWT → signature/claims verified → request authorized.

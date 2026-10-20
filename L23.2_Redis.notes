@@ -1,0 +1,160 @@
+What is Redis?
+Redis = Remote Dictionary Server.
+Redis is a very fast in-memory data store that stores data primarily in RAM, rather than relying on disk for every operation.
+In HLD, you'll most commonly see Redis used as a cache.
+Redis keeps frequently accessed data in memory so applications can retrieve it quickly without repeatedly querying the main database.
+
+Simple example
+Suppose an API needs user profile data.
+Without Redis:
+Client
+   ↓
+Application Server
+   ↓
+Database
+   ↓
+Application Server
+   ↓
+Client
+
+If millions of users repeatedly request the same popular data, the database gets many repeated queries.
+With Redis:
+                 ┌──→ Redis Cache
+                 │
+Client → Server ─┤
+                 │
+                 └──→ Database
+
+Server first checks Redis:
+GET user:101
+
+If found:
+Redis
+  ↓
+User data
+  ↓
+Return response
+
+This is a cache hit.
+If not found:
+Redis ❌
+   ↓
+Database
+   ↓
+Get user
+   ↓
+Store in Redis
+   ↓
+Return user
+
+This is a cache miss.
+So:
+Request
+   ↓
+Check Redis
+   ↓
+Found?
+ /     \
+YES     NO
+ ↓       ↓
+Return   Database
+          ↓
+       Get data
+          ↓
+       Cache it
+          ↓
+        Return
+
+This common pattern is called Cache-Aside.
+Why is Redis fast?
+The biggest reason is that Redis primarily works with data in memory (RAM).
+Conceptually:
+Database → often involves persistent storage + query processing
+Redis    → memory access
+
+Memory access is extremely fast, so Redis is commonly used to reduce latency and database load.
+Is Redis only a cache?
+No. This is important.
+Redis is an in-memory data store and supports data structures such as:
+Strings
+Hashes
+Lists
+Sets
+Sorted Sets
+Streams
+
+Because of this, Redis can be used for several things:
+- Caching 🔥
+- User sessions
+- Rate limiting
+- Counters
+- Leaderboards
+- Distributed locks
+- Pub/Sub
+- Queues/streams in some architectures
+- Temporary data
+For example, a website visit counter:
+page_views = 100
+
+INCR page_views
+
+→ 101
+
+Or leaderboard:
+Rahul     → 1500
+Nishchay  → 1800
+Amit      → 1200
+
+Redis Sorted Sets are useful for this type of ranking.
+TTL — another important Redis concept
+Cached data doesn't necessarily need to remain forever.
+You can give a key a TTL (Time To Live).
+For example:
+user:101 → User Data
+
+TTL = 5 minutes
+
+After 5 minutes, the key expires automatically.
+This is useful because otherwise cached data could become stale or consume memory indefinitely.
+Redis and Database are not the same thing
+A common architecture is:
+              ┌─────────┐
+          ┌──→│  Redis  │
+          │   └─────────┘
+          │
+Client → Server
+          │
+          │   ┌─────────┐
+          └──→│ Main DB │
+              └─────────┘
+
+For example:
+Redis       → Fast cache
+PostgreSQL  → Main persistent database
+
+Redis can also persist data to disk and can be used as a primary datastore for suitable workloads, so don't memorize "Redis data always disappears after restart."
+Redis in an HLD example
+Suppose you're designing Instagram.
+A celebrity profile is requested millions of times:
+GET /users/virat
+
+Instead of:
+1,000,000 requests
+        ↓
+    Database 😵
+
+you can cache frequently requested information:
+1,000,000 requests
+        ↓
+      Redis
+        ↓
+Most requests served
+from cache
+        ↓
+Database receives
+far fewer reads
+
+This gives you:
+Lower latency + lower database load + better scalability.
+Interview definition
+Redis is a high-performance in-memory data store commonly used for caching, sessions, counters, rate limiting, and other low-latency use cases.
